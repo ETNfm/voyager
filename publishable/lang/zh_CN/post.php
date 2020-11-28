@@ -1,7 +1,6 @@
 <?php
 
 return [
-    'additional_fields'=> '附加字段',
     'category'         => '分类目录',
     'content'          => '文章内容',
     'details'          => '文章详细信息',

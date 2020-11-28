@@ -1,12 +1,12 @@
 @section('media-manager')
 <div>
-    <div v-if="hidden_element" :id="'dd_'+this._uid" class="dd">
+    <div v-if="hidden_element" class="dd">
         <ol id="files" class="dd-list">
             <li v-for="file in getSelectedFiles()" class="dd-item" :data-url="file">
                 <div class="file_link selected" aria-hidden="true" data-toggle="tooltip" data-placement="auto" :title="file">
                     <div class="link_icon">
                         <template v-if="fileIs(file, 'image')">
-                            <div class="img_icon" :style="imgIcon('{{ Storage::disk(config('voyager.storage.disk'))->url('/') }}'+file)"></div>
+                            <div class="img_icon" :style="imgIcon('{{ Storage::disk(config('voyager.storage.disk'))->url('') }}'+file)"></div>
                         </template>
                         <template v-else-if="fileIs(file, 'video')">
                             <i class="icon voyager-video"></i>
@@ -35,12 +35,12 @@
         </ol>
     </div>
     <div v-if="hidden_element">
-        <div class="btn btn-sm btn-default" v-on:click="isExpanded = !isExpanded;" style="width:100%">
-            <div v-if="!isExpanded"><i class="voyager-double-down"></i> {{ __('voyager::generic.open') }}</div>
-            <div v-if="isExpanded"><i class="voyager-double-up"></i> {{ __('voyager::generic.close') }}</div>
+        <div class="btn btn-sm btn-default" v-on:click="expanded = !expanded;" style="width:100%">
+            <div v-if="!expanded"><i class="voyager-double-down"></i> {{ __('voyager::generic.open') }}</div>
+            <div v-if="expanded"><i class="voyager-double-up"></i> {{ __('voyager::generic.close') }}</div>
         </div>
     </div>
-    <div id="toolbar" v-if="showToolbar" :style="isExpanded ? 'display:block' : 'display:none'">
+    <div id="toolbar" v-if="showToolbar" :style="expanded ? 'display:block' : 'display:none'">
         <div class="btn-group offset-right">
             <button type="button" class="btn btn-primary" id="upload" v-if="allowUpload">
                 <i class="voyager-upload"></i>
@@ -55,10 +55,6 @@
             <i class="voyager-refresh"></i>
         </button>
         <div class="btn-group offset-right">
-            <button type="button" :disabled="selected_files.length == 0" v-if="allowUpload && hidden_element" class="btn btn-default" v-on:click="addSelectedFiles()">
-                <i class="voyager-upload"></i>
-                {{ __('voyager::media.add_all_selected') }}
-            </button>
             <button type="button" v-if="showFolders && allowMove" class="btn btn-default" data-toggle="modal" :data-target="'#move_files_modal_'+this._uid">
                 <i class="voyager-move"></i>
                 {{ __('voyager::generic.move') }}
@@ -77,7 +73,7 @@
     <div id="uploadProgress" class="progress active progress-striped" v-if="allowUpload">
         <div class="progress-bar progress-bar-success" style="width: 0"></div>
     </div>
-    <div id="content" :style="isExpanded ? 'display:block' : 'display:none'">
+    <div id="content" :style="expanded ? 'display:block' : 'display:none'">
         <div class="breadcrumb-container">
             <ol class="breadcrumb filemanager">
                 <li class="media_breadcrumb" v-on:click="setCurrentPath(-1)">
@@ -202,17 +198,6 @@
                                     <p>@{{ dateFilter(selected_file.last_modified) }}</p>
                                 </span>
                             </template>
-
-                            <span v-if="fileIs(selected_file, 'image') && selected_file.thumbnails.length > 0">
-                                <h4>Thumbnails</h4><br>
-                                <ul>
-                                    <li v-for="thumbnail in selected_file.thumbnails">
-                                        <a :href="thumbnail.path" target="_blank">
-                                            @{{ thumbnail.thumb_name }}
-                                        </a>
-                                    </li>
-                                </ul>
-                            </span>
                         </div>
                     </div>
                     <div v-else class="right_none_selected">
@@ -331,7 +316,7 @@
 
                 <div class="modal-header">
                     <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
-                    <h4 class="modal-title">{{ __('voyager::media.crop_image') }}</h4>
+                    <h4 class="modal-title"><i class="voyager-warning"></i> {{ __('voyager::media.crop_image') }}</h4>
                 </div>
 
                 <div class="modal-body">
@@ -424,17 +409,7 @@
             element: {
                 type: String,
                 default: ""
-            },
-            details: {
-                type: Object,
-                default: function() {
-                    return {};
-                }
-            },
-            expanded: {
-                type: Boolean,
-                default: true,
-            },
+            }
         },
         data: function() {
             return {
@@ -443,7 +418,7 @@
                 files: [],
 		  		is_loading: true,
                 hidden_element: null,
-                isExpanded: this.expanded,
+                expanded: true,
                 modals: {
                     new_folder: {
                         name: ''
@@ -463,7 +438,7 @@
             getFiles: function() {
                 var vm = this;
                 vm.is_loading = true;
-                $.post('{{ route('voyager.media.files') }}', { folder: vm.current_folder, _token: '{{ csrf_token() }}', details: vm.details }, function(data) {
+                $.post('{{ route('voyager.media.files') }}', { folder: vm.current_folder, _token: '{{ csrf_token() }}' }, function(data) {
                     vm.files = [];
                     for (var i = 0, file; file = data[i]; i++) {
                         if (vm.filter(file)) {
@@ -526,7 +501,7 @@
             },
             openFile: function(file) {
                 if (file.type == 'folder') {
-                    this.current_folder += file.name+"/";
+                    this.current_folder += "/"+file.name;
                     this.getFiles();
                 } else if (this.hidden_element) {
                     this.addFileToInput(file);
@@ -544,7 +519,7 @@
             fileIs: function(file, type) {
                 if (typeof file === 'string') {
                     if (type == 'image') {
-                        return this.endsWithAny(['jpg', 'jpeg', 'png', 'bmp'], file.toLowerCase());
+                        return this.endsWithAny(['jpg', 'jpeg', 'png', 'bmp'], file);
                     }
                     //Todo: add other types
                 } else {
@@ -566,7 +541,7 @@
                 } else {
                     var path = this.getCurrentPath();
                     path.length = i + 1;
-                    this.current_folder = this.basePath+path.join('/') + '/';
+                    this.current_folder = this.basePath+path.join('/');
                 }
 
                 this.getFiles();
@@ -615,7 +590,6 @@
                             this.hidden_element.value = JSON.stringify(content);
                         }
                     }
-                    this.$forceUpdate();
                 }
             },
             removeFileFromInput: function(path) {
@@ -751,12 +725,6 @@
 					}
 				});
             },
-            addSelectedFiles: function () {
-                var vm = this;
-                for (i = 0; i < vm.selected_files.length; i++) {
-                    vm.openFile(vm.selected_files[i]);
-                }
-            },
             bytesToSize: function(bytes) {
 				var sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
 				if (bytes == 0) return '0 Bytes';
@@ -800,6 +768,7 @@
                 if (!this.hidden_element) {
                     console.error('Element "'+this.element+'" could not be found.');
                 } else {
+                    this.expanded = false;
                     if (this.maxSelectedFiles > 1 && this.hidden_element.value == '') {
                         this.hidden_element.value = '[]';
                     }
@@ -862,7 +831,6 @@
                         formData.append("_token", '{{ csrf_token() }}');
                         formData.append("upload_path", vm.current_folder);
                         formData.append("filename", vm.filename);
-                        formData.append("details", JSON.stringify(vm.details));
                     },
                     success: function(e, res) {
                         if (res.success) {
@@ -928,15 +896,16 @@
                 });
 
                 //Nestable
-                $('#dd_'+vm._uid).nestable({
+                $('.dd').nestable({
                     maxDepth: 1,
                     handleClass: 'file_link',
                     collapseBtnHTML: '',
                     expandBtnHTML: '',
+                    emptyClass : '',
                     callback: function(l, e) {
                         if (vm.allowMultiSelect) {
                             var new_content = [];
-                            var object = $('#dd_'+vm._uid).nestable('serialize');
+                            var object = $('.dd').nestable('serialize');
                             for (var key in object) {
                                 new_content.push(object[key].url);
                             }
@@ -956,11 +925,3 @@
         },
     });
 </script>
-<style>
-.dd-placeholder {
-    flex: 1;
-    width: 100%;
-    min-width: 200px;
-    max-width: 250px;
-}
-</style>

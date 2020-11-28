@@ -7,9 +7,8 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Arr;
-use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 use TCG\Voyager\Actions\DeleteAction;
 use TCG\Voyager\Actions\EditAction;
 use TCG\Voyager\Actions\RestoreAction;
@@ -77,7 +76,7 @@ class Voyager
 
     public function model($name)
     {
-        return app($this->models[Str::studly($name)]);
+        return app($this->models[studly_case($name)]);
     }
 
     public function modelClass($name)
@@ -93,11 +92,11 @@ class Voyager
 
         $class = get_class($object);
 
-        if (isset($this->models[Str::studly($name)]) && !$object instanceof $this->models[Str::studly($name)]) {
-            throw new \Exception("[{$class}] must be instance of [{$this->models[Str::studly($name)]}].");
+        if (isset($this->models[studly_case($name)]) && !$object instanceof $this->models[studly_case($name)]) {
+            throw new \Exception("[{$class}] must be instance of [{$this->models[studly_case($name)]}].");
         }
 
-        $this->models[Str::studly($name)] = $class;
+        $this->models[studly_case($name)] = $class;
 
         return $this;
     }
@@ -183,40 +182,24 @@ class Voyager
     }
 
     /**
-     * Get a collection of dashboard widgets.
-     * Each of our widget groups contain a max of three widgets.
-     * After that, we will switch to a new widget group.
+     * Get a collection of the dashboard widgets.
      *
-     * @return array - Array consisting of \Arrilot\Widget\WidgetGroup objects
+     * @return \Arrilot\Widgets\WidgetGroup
      */
     public function dimmers()
     {
         $widgetClasses = config('voyager.dashboard.widgets');
-        $dimmerGroups = [];
-        $dimmerCount = 0;
-        $dimmers = Widget::group("voyager::dimmers-{$dimmerCount}");
+        $dimmers = Widget::group('voyager::dimmers');
 
         foreach ($widgetClasses as $widgetClass) {
             $widget = app($widgetClass);
 
             if ($widget->shouldBeDisplayed()) {
-
-                // Every third dimmer, we consider out WidgetGroup filled.
-                // We switch that out with another WidgetGroup.
-                if ($dimmerCount % 3 === 0 && $dimmerCount !== 0) {
-                    $dimmerGroups[] = $dimmers;
-                    $dimmerGroupTag = ceil($dimmerCount / 3);
-                    $dimmers = Widget::group("voyager::dimmers-{$dimmerGroupTag}");
-                }
-
                 $dimmers->addWidget($widgetClass);
-                $dimmerCount++;
             }
         }
 
-        $dimmerGroups[] = $dimmers;
-
-        return $dimmerGroups;
+        return $dimmers;
     }
 
     public function setting($key, $default = null)
@@ -235,7 +218,7 @@ class Voyager
                 Cache::tags('settings')->flush();
             }
 
-            foreach (self::model('Setting')->orderBy('order')->get() as $setting) {
+            foreach (self::model('Setting')->all() as $setting) {
                 $keys = explode('.', $setting->key);
                 @$this->setting_cache[$keys[0]][$keys[1]] = $setting->value;
 
@@ -341,16 +324,6 @@ class Voyager
 
     public function getLocales()
     {
-        $appLocales = [];
-        if ($this->filesystem->exists(resource_path('lang/vendor/voyager'))) {
-            $appLocales = array_diff(scandir(resource_path('lang/vendor/voyager')), ['..', '.']);
-        }
-
-        $vendorLocales = array_diff(scandir(realpath(__DIR__.'/../publishable/lang')), ['..', '.']);
-        $allLocales = array_merge($vendorLocales, $appLocales);
-
-        asort($allLocales);
-
-        return $allLocales;
+        return array_diff(scandir(realpath(__DIR__.'/../publishable/lang')), ['..', '.']);
     }
 }

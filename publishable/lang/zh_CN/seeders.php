@@ -55,7 +55,6 @@ return [
         ],
     ],
     'menu_items' => [
-        'bread'        => 'bread',
         'categories'   => '分类目录',
         'compass'      => '指南针',
         'dashboard'    => '控制面板',

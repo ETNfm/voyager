@@ -52,8 +52,7 @@ class VoyagerDummyServiceProvider extends ServiceProvider
     public function registerConfigs()
     {
         $this->mergeConfigFrom(
-            dirname(__DIR__).'/../publishable/config/voyager_dummy.php',
-            'voyager'
+            dirname(__DIR__).'/../publishable/config/voyager_dummy.php', 'voyager'
         );
     }
 }

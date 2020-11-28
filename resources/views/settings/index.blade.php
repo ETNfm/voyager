@@ -256,12 +256,10 @@
                                     <a href="{{ route('voyager.settings.move_down', $setting->id) }}">
                                         <i class="sort-icons voyager-sort-desc"></i>
                                     </a>
-                                    @can('delete', Voyager::model('Setting'))
                                     <i class="voyager-trash"
                                        data-id="{{ $setting->id }}"
                                        data-display-key="{{ $setting->key }}"
                                        data-display-name="{{ $setting->display_name }}"></i>
-                                    @endcan
                                 </div>
                             </div>
 
@@ -285,16 +283,7 @@
                                             </div>
                                             <div class="clearfix"></div>
                                         @elseif($setting->type == "file" && isset( $setting->value ))
-                                            @if(json_decode($setting->value) !== null)
-                                                @foreach(json_decode($setting->value) as $file)
-                                                  <div class="fileType">
-                                                    <a class="fileType" target="_blank" href="{{ Storage::disk(config('voyager.storage.disk'))->url($file->download_link) }}">
-                                                      {{ $file->original_name }}
-                                                    </a>
-                                                    <a href="{{ route('voyager.settings.delete_value', $setting->id) }}" class="voyager-x delete_value"></a>
-                                                 </div>
-                                                @endforeach
-                                            @endif
+                                            <div class="fileType">{{ $setting->value }}</div>
                                         @endif
                                         <input type="file" name="{{ $setting->key }}">
                                     @elseif($setting->type == "select_dropdown")
@@ -304,7 +293,7 @@
                                             <?php $default = (isset($options->default)) ? $options->default : NULL; ?>
                                             @if(isset($options->options))
                                                 @foreach($options->options as $index => $option)
-                                                    <option value="{{ $index }}" @if($default == $index && $selected_value === NULL) selected="selected" @endif @if($selected_value == $index) selected="selected" @endif>{{ $option }}</option>
+                                                    <option value="{{ $index }}" @if($default == $index && $selected_value === NULL){{ 'selected="selected"' }}@endif @if($selected_value == $index){{ 'selected="selected"' }}@endif>{{ $option }}</option>
                                                 @endforeach
                                             @endif
                                         </select>
@@ -318,7 +307,7 @@
                                                 @foreach($options->options as $index => $option)
                                                     <li>
                                                         <input type="radio" id="option-{{ $index }}" name="{{ $setting->key }}"
-                                                               value="{{ $index }}" @if($default == $index && $selected_value === NULL) checked @endif @if($selected_value == $index) checked @endif>
+                                                               value="{{ $index }}" @if($default == $index && $selected_value === NULL){{ 'checked' }}@endif @if($selected_value == $index){{ 'checked' }}@endif>
                                                         <label for="option-{{ $index }}">{{ $option }}</label>
                                                         <div class="check"></div>
                                                     </li>
@@ -422,7 +411,6 @@
         @endcan
     </div>
 
-    @can('delete', Voyager::model('Setting'))
     <div class="modal modal-danger fade" tabindex="-1" id="delete_modal" role="dialog">
         <div class="modal-dialog">
             <div class="modal-content">
@@ -445,7 +433,6 @@
             </div>
         </div>
     </div>
-    @endcan
 
 @stop
 
@@ -461,7 +448,6 @@
                 }
             });
 
-            @can('delete', Voyager::model('Setting'))
             $('.panel-actions .voyager-trash').click(function () {
                 var display = $(this).data('display-name') + '/' + $(this).data('display-key');
 
@@ -470,7 +456,6 @@
                 $('#delete_form')[0].action = '{{ route('voyager.settings.delete', [ 'id' => '__id' ]) }}'.replace('__id', $(this).data('id'));
                 $('#delete_modal').modal('show');
             });
-            @endcan
 
             $('.toggleswitch').bootstrapToggle();
 
@@ -483,9 +468,6 @@
                 $(this).closest('form').attr('action', $(this).attr('href'));
                 $(this).closest('form').submit();
             });
-
-            // Initiliaze rich text editor
-            tinymce.init(window.voyagerTinyMCE.getConfig());
         });
     </script>
     <script type="text/javascript">

@@ -4,15 +4,14 @@ namespace TCG\Voyager\Models;
 
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Auth;
 use TCG\Voyager\Facades\Voyager;
 use TCG\Voyager\Traits\Resizable;
 use TCG\Voyager\Traits\Translatable;
 
 class Post extends Model
 {
-    use Translatable;
-    use Resizable;
+    use Translatable,
+        Resizable;
 
     protected $translatable = ['title', 'seo_title', 'excerpt', 'body', 'slug', 'meta_description', 'meta_keywords'];
 
@@ -23,11 +22,11 @@ class Post extends Model
     public function save(array $options = [])
     {
         // If no author has been assigned, assign the current user's id as the author of the post
-        if (!$this->author_id && Auth::user()) {
-            $this->author_id = Auth::user()->getKey();
+        if (!$this->author_id && app('VoyagerAuth')->user()) {
+            $this->author_id = app('VoyagerAuth')->user()->getKey();
         }
 
-        return parent::save();
+        parent::save();
     }
 
     public function authorId()

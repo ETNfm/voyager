@@ -1,10 +1,10 @@
 @extends('voyager::master')
 
-@section('page_title', __('voyager::generic.view').' '.$dataType->getTranslatedAttribute('display_name_singular'))
+@section('page_title', __('voyager::generic.view').' '.$dataType->display_name_singular)
 
 @section('page_header')
     <h1 class="page-title">
-        <i class="{{ $dataType->icon }}"></i> {{ __('voyager::generic.viewing') }} {{ ucfirst($dataType->getTranslatedAttribute('display_name_singular')) }} &nbsp;
+        <i class="{{ $dataType->icon }}"></i> {{ __('voyager::generic.viewing') }} {{ ucfirst($dataType->display_name_singular) }} &nbsp;
 
         @can('edit', $dataTypeContent)
             <a href="{{ route('voyager.'.$dataType->slug.'.edit', $dataTypeContent->getKey()) }}" class="btn btn-info">
@@ -23,12 +23,11 @@
                 </a>
             @endif
         @endcan
-        @can('browse', $dataTypeContent)
+
         <a href="{{ route('voyager.'.$dataType->slug.'.index') }}" class="btn btn-warning">
             <span class="glyphicon glyphicon-list"></span>&nbsp;
             {{ __('voyager::generic.return_to_list') }}
         </a>
-        @endcan
     </h1>
     @include('voyager::multilingual.language-selector')
 @stop
@@ -47,12 +46,12 @@
                         }
                         @endphp
                         <div class="panel-heading" style="border-bottom:0;">
-                            <h3 class="panel-title">{{ $row->getTranslatedAttribute('display_name') }}</h3>
+                            <h3 class="panel-title">{{ $row->display_name }}</h3>
                         </div>
 
                         <div class="panel-body" style="padding-top:0;">
                             @if (isset($row->details->view))
-                                @include($row->details->view, ['row' => $row, 'dataType' => $dataType, 'dataTypeContent' => $dataTypeContent, 'content' => $dataTypeContent->{$row->field}, 'action' => 'read', 'view' => 'read', 'options' => $row->details])
+                                @include($row->details->view, ['row' => $row, 'dataType' => $dataType, 'dataTypeContent' => $dataTypeContent, 'content' => $dataTypeContent->{$row->field}, 'action' => 'read'])
                             @elseif($row->type == "image")
                                 <img class="img-responsive"
                                      src="{{ filter_var($dataTypeContent->{$row->field}, FILTER_VALIDATE_URL) ? $dataTypeContent->{$row->field} : Voyager::image($dataTypeContent->{$row->field}) }}">
@@ -91,11 +90,7 @@
                                     @endif
                                 @endif
                             @elseif($row->type == 'date' || $row->type == 'timestamp')
-                                @if ( property_exists($row->details, 'format') && !is_null($dataTypeContent->{$row->field}) )
-                                    {{ \Carbon\Carbon::parse($dataTypeContent->{$row->field})->formatLocalized($row->details->format) }}
-                                @else
-                                    {{ $dataTypeContent->{$row->field} }}
-                                @endif
+                                {{ property_exists($row->details, 'format') ? \Carbon\Carbon::parse($dataTypeContent->{$row->field})->formatLocalized($row->details->format) : $dataTypeContent->{$row->field} }}
                             @elseif($row->type == 'checkbox')
                                 @if(property_exists($row->details, 'on') && property_exists($row->details, 'off'))
                                     @if($dataTypeContent->{$row->field})
@@ -112,7 +107,7 @@
                                 @include('voyager::partials.coordinates')
                             @elseif($row->type == 'rich_text_box')
                                 @include('voyager::multilingual.input-hidden-bread-read')
-                                {!! $dataTypeContent->{$row->field} !!}
+                                <p>{!! $dataTypeContent->{$row->field} !!}</p>
                             @elseif($row->type == 'file')
                                 @if(json_decode($dataTypeContent->{$row->field}))
                                     @foreach(json_decode($dataTypeContent->{$row->field}) as $file)
@@ -147,14 +142,14 @@
             <div class="modal-content">
                 <div class="modal-header">
                     <button type="button" class="close" data-dismiss="modal" aria-label="{{ __('voyager::generic.close') }}"><span aria-hidden="true">&times;</span></button>
-                    <h4 class="modal-title"><i class="voyager-trash"></i> {{ __('voyager::generic.delete_question') }} {{ strtolower($dataType->getTranslatedAttribute('display_name_singular')) }}?</h4>
+                    <h4 class="modal-title"><i class="voyager-trash"></i> {{ __('voyager::generic.delete_question') }} {{ strtolower($dataType->display_name_singular) }}?</h4>
                 </div>
                 <div class="modal-footer">
                     <form action="{{ route('voyager.'.$dataType->slug.'.index') }}" id="delete_form" method="POST">
                         {{ method_field('DELETE') }}
                         {{ csrf_field() }}
                         <input type="submit" class="btn btn-danger pull-right delete-confirm"
-                               value="{{ __('voyager::generic.delete_confirm') }} {{ strtolower($dataType->getTranslatedAttribute('display_name_singular')) }}">
+                               value="{{ __('voyager::generic.delete_confirm') }} {{ strtolower($dataType->display_name_singular) }}">
                     </form>
                     <button type="button" class="btn btn-default pull-right" data-dismiss="modal">{{ __('voyager::generic.cancel') }}</button>
                 </div>
@@ -170,6 +165,7 @@
                 $('.side-body').multilingual();
             });
         </script>
+        <script src="{{ voyager_asset('js/multilingual.js') }}"></script>
     @endif
     <script>
         var deleteFormAction;

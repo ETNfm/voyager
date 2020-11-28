@@ -17,10 +17,9 @@
                 :allow-crop="{{ var_export($options->allow_crop ?? true, true) }}"
                 :allowed-types="{{ isset($options->allowed) && is_array($options->allowed) ? json_encode($options->allowed) : '[]' }}"
                 :pre-select="false"
-                :expanded="{{ var_export($options->expanded ?? false, true) }}"
+                :expanded="false"
                 :show-expand-button="true"
                 :element="'input[name=&quot;{{ $row->field }}&quot;]'"
-                :details="{{ json_encode($options ?? []) }}"
             ></media-manager>
             <input type="hidden" :value="{{ $content }}" name="{{ $row->field }}">
         </div>

@@ -6,7 +6,7 @@ window.Cropper = 'default' in window.Cropper ? window.Cropper['default'] : windo
 window.toastr = require('toastr');
 window.DataTable = require('datatables');
 require('datatables-bootstrap3-plugin/media/js/datatables-bootstrap3');
-window.EasyMDE = require('easymde');
+window.SimpleMDE = require('simplemde');
 require('dropzone');
 require('jquery-match-height');
 require('bootstrap-toggle');
@@ -22,15 +22,8 @@ require('./slugify');
 window.TinyMCE = window.tinymce = require('tinymce');
 require('./multilingual');
 require('./voyager_tinymce');
-window.voyagerTinyMCE = require('./voyager_tinymce_config');
 require('./voyager_ace_editor');
 window.helpers = require('./helpers.js');
-
-Vue.component('admin-menu', require('./components/admin_menu.vue').default);
-
-var admin_menu = new Vue({
-    el: '#adminmenu',
-});
 
 $(document).ready(function () {
 
@@ -62,8 +55,6 @@ $(document).ready(function () {
                     var query = {
                         search: params.term,
                         type: $(this).data('get-items-field'),
-                        method: $(this).data('method'),
-                        id: $(this).data('id'),
                         page: params.page || 1
                     }
                     return query;
@@ -73,17 +64,12 @@ $(document).ready(function () {
 
         $(this).on('select2:select',function(e){
             var data = e.params.data;
-            if (data.id == '') {
-                // "None" was selected. Clear all selected options
-                $(this).val([]).trigger('change');
-            } else {
-                $(e.currentTarget).find("option[value='" + data.id + "']").attr('selected','selected');
-            }
+            $(e.currentTarget).find("option[value='" + data.id + "']").attr('selected','selected');;
         });
 
         $(this).on('select2:unselect',function(e){
             var data = e.params.data;
-            $(e.currentTarget).find("option[value='" + data.id + "']").attr('selected',false);
+            $(e.currentTarget).find("option[value='" + data.id + "']").attr('selected',false);;
         });
     });
     $('select.select2-taggable').select2({
@@ -115,7 +101,6 @@ $(document).ready(function () {
 
         $.post(route, {
             [label]: e.params.args.data.text,
-            _tagging: true,
         }).done(function(data) {
             var newOption = new Option(e.params.args.data.text, data.data.id, false, true);
             $el.append(newOption).trigger('change');
@@ -124,11 +109,6 @@ $(document).ready(function () {
         });
 
         return false;
-    }).on('select2:select', function (e) {
-        if (e.params.data.id == '') {
-            // "None" was selected. Clear all selected options
-            $(this).val([]).trigger('change');
-        }
     });
 
     $('.match-height').matchHeight();
@@ -194,11 +174,11 @@ $(document).ready(function () {
 
     /********** MARKDOWN EDITOR **********/
 
-    $('textarea.easymde').each(function () {
-        var easymde = new EasyMDE({
-            element: this
+    $('textarea.simplemde').each(function () {
+        var simplemde = new SimpleMDE({
+            element: this,
         });
-        easymde.render();
+        simplemde.render();
     });
 
     /********** END MARKDOWN EDITOR **********/

@@ -131,11 +131,6 @@ trait Translatable
      */
     public function getTranslatedAttribute($attribute, $language = null, $fallback = true)
     {
-        // If multilingual is not enabled don't check for translations
-        if (!config('voyager.multilingual.enabled')) {
-            return $this->getAttributeValue($attribute);
-        }
-
         list($value) = $this->getTranslatedAttributeMeta($attribute, $language, $fallback);
 
         return $value;
@@ -163,6 +158,10 @@ trait Translatable
             return [$this->getAttribute($attribute), config('voyager.multilingual.default'), false];
         }
 
+        if (!$this->relationLoaded('translations')) {
+            $this->load('translations');
+        }
+
         if (is_null($locale)) {
             $locale = app()->getLocale();
         }
@@ -173,16 +172,12 @@ trait Translatable
 
         $default = config('voyager.multilingual.default');
 
+        $translations = $this->getRelation('translations')
+            ->where('column_name', $attribute);
+
         if ($default == $locale) {
             return [$this->getAttribute($attribute), $default, true];
         }
-
-        if (!$this->relationLoaded('translations')) {
-            $this->load('translations');
-        }
-
-        $translations = $this->getRelation('translations')
-            ->where('column_name', $attribute);
 
         $localeTranslation = $translations->where('locale', $locale)->first();
 
@@ -229,7 +224,7 @@ trait Translatable
         $locales = config('voyager.multilingual.locales', [$default]);
 
         foreach ($locales as $locale) {
-            if (empty($translations[$locale])) {
+            if (!isset($translations[$locale])) {
                 continue;
             }
 
@@ -278,9 +273,7 @@ trait Translatable
         $self = new static();
         $table = $self->getTable();
 
-        return $query->whereIn(
-            $self->getKeyName(),
-            Translation::where('table_name', $table)
+        return $query->whereIn($self->getKeyName(), Translation::where('table_name', $table)
             ->where('column_name', $field)
             ->where('value', $operator, $value)
             ->when(!is_null($locales), function ($query) use ($locales) {
@@ -341,16 +334,14 @@ trait Translatable
      *
      * @return array translations
      */
-    public function prepareTranslations($request)
+    public function prepareTranslations(&$request)
     {
         $translations = [];
 
         // Translatable Fields
         $transFields = $this->getTranslatableAttributes();
 
-        $fields = !empty($request->attributes->get('breadRows')) ? array_intersect($request->attributes->get('breadRows'), $transFields) : $transFields;
-
-        foreach ($fields as $field) {
+        foreach ($transFields as $field) {
             if (!$request->input($field.'_i18n')) {
                 throw new Exception('Invalid Translatable field'.$field);
             }
@@ -371,39 +362,6 @@ trait Translatable
 
         // Remove language selector input
         unset($request['i18n_selector']);
-
-        return $translations;
-    }
-
-    /**
-     * Prepare translations and set default locale field value.
-     *
-     * @param object $requestData
-     *
-     * @return array translations
-     */
-    public function prepareTranslationsFromArray($field, &$requestData)
-    {
-        $translations = [];
-
-        $field = 'field_display_name_'.$field;
-
-        if (empty($requestData[$field.'_i18n'])) {
-            throw new Exception('Invalid Translatable field '.$field);
-        }
-
-        $trans = json_decode($requestData[$field.'_i18n'], true);
-
-        // Set the default local value
-        $requestData['display_name'] = $trans[config('voyager.multilingual.default', 'en')];
-
-        $translations['display_name'] = $this->setAttributeTranslations(
-            'display_name',
-            $trans
-        );
-
-        // Remove field hidden input
-        unset($requestData[$field.'_i18n']);
 
         return $translations;
     }

@@ -6,7 +6,6 @@ use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Foundation\Bus\DispatchesJobs;
 use Illuminate\Foundation\Validation\ValidatesRequests;
 use Illuminate\Http\Request;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Routing\Controller as BaseController;
 use Illuminate\Support\Facades\Storage;
 use TCG\Voyager\Events\FileDeleted;
@@ -26,10 +25,10 @@ use Validator;
 
 abstract class Controller extends BaseController
 {
-    use DispatchesJobs;
-    use ValidatesRequests;
-    use AuthorizesRequests;
-    use AlertsMessages;
+    use DispatchesJobs,
+        ValidatesRequests,
+        AuthorizesRequests,
+        AlertsMessages;
 
     public function getSlug(Request $request)
     {
@@ -45,9 +44,6 @@ abstract class Controller extends BaseController
     public function insertUpdateData($request, $slug, $rows, $data)
     {
         $multi_select = [];
-
-        // Pass $rows so that we avoid checking unused fields
-        $request->attributes->add(['breadRows' => $rows->pluck('field')->toArray()]);
 
         /*
          * Prepare Translations and Transform data
@@ -67,11 +63,6 @@ abstract class Controller extends BaseController
                 }
             }
 
-            // Value is saved from $row->details->column row
-            if ($row->type == 'relationship' && $row->details->type == 'belongsTo') {
-                continue;
-            }
-
             $content = $this->getContentBasedOnType($request, $slug, $row, $row->details);
 
             if ($row->type == 'relationship' && $row->details->type != 'belongsToMany') {
@@ -79,9 +70,9 @@ abstract class Controller extends BaseController
             }
 
             /*
-             * merge ex_images/files and upload images/files
+             * merge ex_images and upload images
              */
-            if (in_array($row->type, ['multiple_images', 'file']) && !is_null($content)) {
+            if ($row->type == 'multiple_images' && !is_null($content)) {
                 if (isset($data->{$row->field})) {
                     $ex_files = json_decode($data->{$row->field}, true);
                     if (!is_null($ex_files)) {
@@ -105,9 +96,6 @@ abstract class Controller extends BaseController
                 // If the file upload is null and it has a current file keep the current file
                 if ($row->type == 'file') {
                     $content = $data->{$row->field};
-                    if (!$content) {
-                        $content = json_encode([]);
-                    }
                 }
 
                 if ($row->type == 'password') {
@@ -117,15 +105,7 @@ abstract class Controller extends BaseController
 
             if ($row->type == 'relationship' && $row->details->type == 'belongsToMany') {
                 // Only if select_multiple is working with a relationship
-                $multi_select[] = [
-                    'model'           => $row->details->model,
-                    'content'         => $content,
-                    'table'           => $row->details->pivot_table,
-                    'foreignPivotKey' => $row->details->foreign_pivot_key ?? null,
-                    'relatedPivotKey' => $row->details->related_pivot_key ?? null,
-                    'parentKey'       => $row->details->parent_key ?? null,
-                    'relatedKey'      => $row->details->key,
-                ];
+                $multi_select[] = ['model' => $row->details->model, 'content' => $content, 'table' => $row->details->pivot_table];
             } else {
                 $data->{$row->field} = $content;
             }
@@ -147,14 +127,7 @@ abstract class Controller extends BaseController
         }
 
         foreach ($multi_select as $sync_data) {
-            $data->belongsToMany(
-                $sync_data['model'],
-                $sync_data['table'],
-                $sync_data['foreignPivotKey'],
-                $sync_data['relatedPivotKey'],
-                $sync_data['parentKey'],
-                $sync_data['relatedKey']
-            )->sync($sync_data['content']);
+            $data->belongsToMany($sync_data['model'], $sync_data['table'])->sync($sync_data['content']);
         }
 
         // Rename folders for newly created data through media-picker
@@ -181,21 +154,21 @@ abstract class Controller extends BaseController
     /**
      * Validates bread POST request.
      *
-     * @param array  $data The data
-     * @param array  $rows The rows
-     * @param string $slug Slug
-     * @param int    $id   Id of the record to update
+     * @param \Illuminate\Http\Request $request The Request
+     * @param array                    $data    Field data
+     * @param string                   $slug    Slug
+     * @param int                      $id      Id of the record to update
      *
      * @return mixed
      */
-    public function validateBread($data, $rows, $name = null, $id = null)
+    public function validateBread($request, $data, $name = null, $id = null)
     {
         $rules = [];
         $messages = [];
         $customAttributes = [];
         $is_update = $name && $id;
 
-        $fieldsWithValidationRules = $this->getFieldsWithValidationRules($rows);
+        $fieldsWithValidationRules = $this->getFieldsWithValidationRules($data);
 
         foreach ($fieldsWithValidationRules as $field) {
             $fieldRules = $field->details->validation->rule;
@@ -203,23 +176,8 @@ abstract class Controller extends BaseController
 
             // Show the field's display name on the error message
             if (!empty($field->display_name)) {
-                if (!empty($data[$fieldName]) && is_array($data[$fieldName])) {
-                    foreach ($data[$fieldName] as $index => $element) {
-                        if ($element instanceof UploadedFile) {
-                            $name = $element->getClientOriginalName();
-                        } else {
-                            $name = $index + 1;
-                        }
-
-                        $customAttributes[$fieldName.'.'.$index] = $field->getTranslatedAttribute('display_name').' '.$name;
-                    }
-                } else {
-                    $customAttributes[$fieldName] = $field->getTranslatedAttribute('display_name');
-                }
+                $customAttributes[$fieldName] = $field->display_name;
             }
-
-            // If field is an array apply rules to all array elements
-            $fieldName = !empty($data[$fieldName]) && is_array($data[$fieldName]) ? $fieldName.'.*' : $fieldName;
 
             // Get the rules for the current field whatever the format it is in
             $rules[$fieldName] = is_array($fieldRules) ? $fieldRules : explode('|', $fieldRules);
@@ -243,12 +201,12 @@ abstract class Controller extends BaseController
             // Set custom validation messages if any
             if (!empty($field->details->validation->messages)) {
                 foreach ($field->details->validation->messages as $key => $msg) {
-                    $messages["{$field->field}.{$key}"] = $msg;
+                    $messages["{$fieldName}.{$key}"] = $msg;
                 }
             }
         }
 
-        return Validator::make($data, $rules, $messages, $customAttributes);
+        return Validator::make($request, $rules, $messages, $customAttributes);
     }
 
     public function getContentBasedOnType(Request $request, $slug, $row, $options = null)
@@ -275,8 +233,6 @@ abstract class Controller extends BaseController
             /********** IMAGE TYPE **********/
             case 'image':
                 return (new ContentImage($request, $slug, $row, $options))->handle();
-            /********** DATE TYPE **********/
-            case 'date':
             /********** TIMESTAMP TYPE **********/
             case 'timestamp':
                 return (new Timestamp($request, $slug, $row, $options))->handle();

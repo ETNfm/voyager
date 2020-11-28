@@ -4,18 +4,13 @@
     <title>@yield('page_title', setting('admin.title') . " - " . setting('admin.description'))</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}"/>
-    <meta name="assets-path" content="{{ route('voyager.voyager_assets') }}"/>
+    <meta name="assets-path" content="{{ route('voyager.assets') }}"/>
 
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,400,700" rel="stylesheet">
 
     <!-- Favicon -->
-    <?php $admin_favicon = Voyager::setting('admin.icon_image', ''); ?>
-    @if($admin_favicon == '')
-        <link rel="shortcut icon" href="{{ voyager_asset('images/logo-icon.png') }}" type="image/png">
-    @else
-        <link rel="shortcut icon" href="{{ Voyager::image($admin_favicon) }}" type="image/png">
-    @endif
+    <link rel="shortcut icon" href="{{ voyager_asset('images/logo-icon.png') }}" type="image/x-icon">
 
 
 
@@ -23,7 +18,7 @@
     <link rel="stylesheet" href="{{ voyager_asset('css/app.css') }}">
 
     @yield('css')
-    @if(__('voyager::generic.is_rtl') == 'true')
+    @if(config('voyager.multilingual.rtl'))
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-rtl/3.4.0/css/bootstrap-rtl.css">
         <link rel="stylesheet" href="{{ voyager_asset('css/rtl.css') }}">
     @endif
@@ -64,10 +59,10 @@
 </div>
 
 <?php
-if (\Illuminate\Support\Str::startsWith(Auth::user()->avatar, 'http://') || \Illuminate\Support\Str::startsWith(Auth::user()->avatar, 'https://')) {
-    $user_avatar = Auth::user()->avatar;
+if (starts_with(app('VoyagerAuth')->user()->avatar, 'http://') || starts_with(app('VoyagerAuth')->user()->avatar, 'https://')) {
+    $user_avatar = app('VoyagerAuth')->user()->avatar;
 } else {
-    $user_avatar = Voyager::image(Auth::user()->avatar);
+    $user_avatar = Voyager::image(app('VoyagerAuth')->user()->avatar);
 }
 ?>
 
@@ -91,7 +86,7 @@ if (\Illuminate\Support\Str::startsWith(Auth::user()->avatar, 'http://') || \Ill
                     appContainer.style.WebkitTransition = appContainer.style.MozTransition = appContainer.style.transition =
                     navbar.style.WebkitTransition = navbar.style.MozTransition = navbar.style.transition = 'none';
 
-                    if (window.innerWidth > 768 && window.localStorage && window.localStorage['voyager.stickySidebar'] == 'true') {
+                    if (window.localStorage && window.localStorage['voyager.stickySidebar'] == 'true') {
                         appContainer.className += ' expanded no-animation';
                         loader.style.left = (sidebar.clientWidth/2)+'px';
                         hamburgerMenu.className += ' is-active no-animation';
@@ -140,6 +135,12 @@ if (\Illuminate\Support\Str::startsWith(Auth::user()->avatar, 'http://') || \Ill
     @endif
 </script>
 @include('voyager::media.manager')
+@include('voyager::menu.admin_menu')
+<script>
+new Vue({
+    el: '#adminmenu',
+});
+</script>
 @yield('javascript')
 @stack('javascript')
 @if(!empty(config('voyager.additional_js')))<!-- Additional Javascript -->
